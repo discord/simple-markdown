@@ -110,14 +110,17 @@
             }
         });
 
+        // We store the previous capture so that match functions can
+        // use some limited amount of lookbehind. Lists use this to
+        // ensure they don't match arbitrary '- ' or '* ' in inline
+        // text (see the list rule for more information). This is outside
+        // the nestedParse function so that the previous capture information
+        // makes it into nested parses.
+        var prevCapture = "";
+
         var nestedParse = function (source, state) {
             var result = [];
             state = state || {};
-            // We store the previous capture so that match functions can
-            // use some limited amount of lookbehind. Lists use this to
-            // ensure they don't match arbitrary '- ' or '* ' in inline
-            // text (see the list rule for more information).
-            var prevCapture = "";
             while (source) {
                 var i = 0;
                 while (i < ruleList.length) {
@@ -130,8 +133,8 @@
                         capture = rule.regex.exec(source);
                     }
                     if (capture) {
-                        var currCaptureString = capture[0];
-                        source = source.substring(currCaptureString.length);
+                        prevCapture = capture[0];
+                        source = source.substring(prevCapture.length);
                         var parsed = rule.parse(capture, nestedParse, state);
                         // We maintain the same object here so that rules can
                         // store references to the objects they return and
@@ -151,7 +154,6 @@
                             result.push(parsed);
                         }
 
-                        prevCapture = currCaptureString;
                         break;
                     }
                     i++;
@@ -168,6 +170,7 @@
         };
 
         var outerParse = function (source, state) {
+            prevCapture = "";
             return nestedParse(preprocess(source), state);
         };
         return outerParse;
